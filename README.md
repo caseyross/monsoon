@@ -1,6 +1,6 @@
-# Reactionary
+# Monsoon
 
-a human-readable interface to the Weather Underground API
+a human-readable interface to the OpenWeather API
 
 ## Why are there no numbers? I though this was a weather app!
 

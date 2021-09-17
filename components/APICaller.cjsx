@@ -1,17 +1,18 @@
 React = require 'react'
 
 Autosuggest = require 'react-autosuggest'
+DataAttribution = require './DataAttribution.cjsx'
 WeatherDisplay = require './WeatherDisplay.cjsx'
-WUAttribution = require './WUAttribution.cjsx'
 
-fetchJsonp = require 'fetch-jsonp'
-WUConfig = require '../config/wu.js'
+OWConfig = require '../config/OWConfig.js'
+cities = require '../data/cities.js'
 
 module.exports = React.createClass
 
     getInitialState: ->
         search_text: ''
         suggestions: []
+        city: ''
         weather: null
 
     updateSearchText: (event, { newValue }) ->
@@ -22,68 +23,59 @@ module.exports = React.createClass
         @getSuggestionsFromAPI value
         .then (suggestions) =>
             @setState
-                suggestions: @getCities(suggestions)
-
-    getCities: (suggestions) ->
-        suggestions.filter (x) ->
-            x.type == 'city'
+                suggestions: suggestions
 
     getSuggestionsFromAPI: (query) ->
-        fetchJsonp 'https://autocomplete.wunderground.com/aq?query=' + query,
-            jsonpCallback: 'cb'
-        .then (res) ->
-            if res.ok
-                res.json()
-            else
-                throw new Error('Autocomplete API responded with an error')
-        .then (json) ->
-            json.RESULTS
-        .catch (err) ->
-            console.log err
-            []
+        i = 0
+        suggestions = []
+        while suggestions.length < 10 and i < cities.length
+            current_city = cities[i]
+            if current_city.n.toLowerCase().startsWith(query)
+                suggestions.push(current_city)
+            i += 1
+        Promise.resolve suggestions
 
     chooseSuggestion: ( event, { suggestion } ) ->
-        @getWeatherFromAPI suggestion.l
+        @getWeatherFromAPI [ suggestion.y, suggestion.x ]
         .then (weather) =>
             @setState
+                city: suggestion.n
                 weather: weather
                 search_text: ''
 
-    getWeatherFromAPI: (location) ->
-        url = 'https://api.wunderground.com/api/' +
-            WUConfig.API_KEY +
-            '/almanac/astronomy/conditions/forecast/geolookup' +
-            location +
-            '.json'
-        fetchJsonp url
+    getWeatherFromAPI: ([ lat, lon ]) ->
+        url = "https://api.openweathermap.org/data/2.5/weather?lat=#{lat}&lon=#{lon}&units=metric&appid=#{OWConfig.API_KEY}"
+        fetch url
         .then (res) ->
-            if res.ok
-                res.json()
-            else
-                throw new Error('Weather API responded with an error')
+            switch res.status
+                when 200
+                    res.json()
+                else
+                    throw new Error('Weather API did not respond as expected')
         .then (json) ->
             json
         .catch (err) ->
             console.log err
             null
             
-    maybeRenderWeather: ->
+    renderWeatherOrAttribution: ->
         if @state.weather?
             <WeatherDisplay
                 weather={ @state.weather }
+                location={ @state.city }
             />
         else
-            null
+            <DataAttribution />
     
     render: ->
         <div>
             <Autosuggest
-                suggestions={ @state.suggestions[..9] }
+                suggestions={ @state.suggestions }
                 onSuggestionsUpdateRequested={ @updateSuggestions }
-                getSuggestionValue={ (suggestion) -> suggestion.name }
+                getSuggestionValue={ (suggestion) -> suggestion.n + ', ' + suggestion.c }
                 renderSuggestion={ (suggestion) ->
                     <span>
-                        { suggestion.name }
+                        { suggestion.n + ', ' + suggestion.c }
                     </span>
                 }
                 inputProps={
@@ -94,6 +86,5 @@ module.exports = React.createClass
                 }
                 onSuggestionSelected={ @chooseSuggestion }
             />
-            { @maybeRenderWeather() }
-            <WUAttribution />
+            { @renderWeatherOrAttribution() }
         </div>

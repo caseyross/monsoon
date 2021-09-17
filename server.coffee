@@ -17,5 +17,6 @@ server.get '/', (req, res) ->
     res.render 'index'
 
 # startup
-server.listen process.env.PORT
-console.log 'Express server started on port %s', process.env.PORT
+PORT = process.env.PORT or 1234
+server.listen PORT
+console.log 'Express server started on port %s', PORT

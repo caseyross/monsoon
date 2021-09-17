@@ -1,0 +1,5 @@
+The cities data reproduced here is licensed under CC-BY-4.0 from:
+
+simplemaps
+
+(https://simplemaps.com/data/world-cities)
